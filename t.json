@@ -2,13 +2,10 @@
   "TOPMed.recalibrate_quality_scores.known_site_1": "gs://broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
   "TOPMed.recalibrate_quality_scores.known_site_2": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.known_indels.vcf.gz",
   "TOPMed.recalibrate_quality_scores.known_site_3": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf",
-  
   "TOPMed.human_ref_fasta": "http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa",
   "TOPMed.human_ref_index": "http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa.fai",
   "TOPMed.human_ref_dict": "http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.dict",
-  
   "TOPMed.sort_cram_file.inputCRAM": "File",
-  
   "TOPMed.recalibrate_quality_scores.recalibration_report_name": "recalibration_report_name",
   "TOPMed.sample": "Sample00",
   "TOPMed.sample_bam_pair_name1": "Sample01",
