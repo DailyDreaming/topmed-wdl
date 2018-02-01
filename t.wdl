@@ -1,49 +1,54 @@
+## Copyright UCSC, 2018
+##
+## LICENSING :
+## This script is released under the WDL source code license (BSD-3) (see LICENSE in
+## https://github.com/broadinstitute/wdl). Note however that the programs it calls may
+## be subject to different licenses. Users are responsible for checking that they are
+## authorized to run all programs before running this script. Please see the docker
+## page at https://hub.docker.com/r/broadinstitute/genomes-in-the-cloud/ for detailed
+## licensing information pertaining to the included programs.
+
 workflow TOPMed {
   String sample
   String sample_bam_pair_name1
   String sample_bam_pair_name2
-  File samtools
   File human_ref_fasta
 
   call sort_cram_file {
   input: 
-      samtools_path=samtools,
       sampleName=sample
   }
 
   call get_header {
   input: 
-      samtools_path=samtools,
-      sorted_cram=sort_cram_file.outputCRAM,
+      sorted_bam=sort_cram_file.outputBAM,
       sampleName=sample
   }
 
   call get_fastq {
   input: 
-      samtools_path=samtools,
-      sorted_cram=sort_cram_file.outputCRAM,
+      sorted_bam=sort_cram_file.outputBAM,
       sampleName=sample
   }
 
   call perform_alignment as align_1 {
   input: 
       sampleName=sample_bam_pair_name1,
-      read_group_header=get_header.CRAMheader,
+      read_group_header=get_header.BAMheader,
       reference_fa=human_ref_fasta,
-      fq_file=get_fastq.CRAMfastq_1
+      fq_file=get_fastq.BAMfastq_1
   }
 
   call perform_alignment as align_2 {
   input: 
       sampleName=sample_bam_pair_name2,
-      read_group_header=get_header.CRAMheader,
+      read_group_header=get_header.BAMheader,
       reference_fa=human_ref_fasta,
-      fq_file=get_fastq.CRAMfastq_2
+      fq_file=get_fastq.BAMfastq_2
   }
 
   call merge_bam_files {
   input: 
-      samtools_path=samtools,
       sampleName=sample,
       BAM1=align_1.aligned_bam,
       BAM2=align_2.aligned_bam
@@ -52,7 +57,6 @@ workflow TOPMed {
   call sort_bam_file {
   input: 
       inputBAM=merge_bam_files.merged_bam,
-      samtools_path=samtools,
       sampleName=sample
   }
 
@@ -60,6 +64,11 @@ workflow TOPMed {
   input: 
       sampleName=sample,
       duped_bam_input=sort_bam_file.outputBAM
+  }
+
+  call bam_to_sam {
+  input:
+      input_bamfile=align_1.aligned_bam
   }
 
   call recalibrate_quality_scores {
@@ -70,61 +79,71 @@ workflow TOPMed {
 }
 
 task sort_cram_file {
-  File samtools_path
   File inputCRAM
   String sampleName
 
   command {
-    ${samtools_path} sort ${inputCRAM} -T tmp.srt -O cram -o ${sampleName}_sorted.cram
+    samtools sort ${inputCRAM} -T tmp.srt -O bam -o ${sampleName}_sorted.bam
   }
 
   output {
-    File outputCRAM = "${sampleName}_sorted.cram"
+    File outputBAM = "${sampleName}_sorted.bam"
+  }
+
+  runtime {
+    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
   }
 }
 
 task get_header {
-  File samtools_path
-  File sorted_cram
+  File sorted_bam
   String sampleName
 
   command {
-    ${samtools_path} view -H ${sorted_cram} > ${sampleName}_sorted.cram.header
+    samtools view -H ${sorted_bam} > ${sampleName}_sorted.bam.header
   }
 
   output {
-    File CRAMheader = "${sampleName}_sorted.cram.header"
+    File BAMheader = "${sampleName}_sorted.bam.header"
+  }
+
+  runtime {
+    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
   }
 }
 
 task get_fastq {
-  File samtools_path
-  File sorted_cram
+  File sorted_bam
   String sampleName
 
   command {
-    ${samtools_path} fastq -1 ${sampleName}_1.fq -2 ${sampleName}_2.fq -0 ${sampleName}_unpaired.fq ${sorted_cram}
+    samtools fastq -1 ${sampleName}_1.fq -2 ${sampleName}_2.fq -0 ${sampleName}_unpaired.fq ${sorted_bam}
   }
 
   output {
-    File CRAMfastq_1 = "${sampleName}_1.fq"
-    File CRAMfastq_2 = "${sampleName}_2.fq"
-    File CRAMfastq_u = "${sampleName}_unpaired.fq"
+    File BAMfastq_1 = "${sampleName}_1.fq"
+    File BAMfastq_2 = "${sampleName}_2.fq"
+    File BAMfastq_u = "${sampleName}_unpaired.fq"
+  }
+
+  runtime {
+    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
   }
 }
 
 task perform_alignment {
   File read_group_header
+  String header = read_string(read_group_header)
   File reference_fa
   File fq_file
   String sampleName
 
   command {
-    /opt/bwa.kit/bwa mem -K 100000000 -R ${read_group_header} -Y ${reference_fa} ${fq_file} | /opt/samblaster-v.0.1.24/samblaster -a --addMateTags | /opt/bwa.kit/samtools view -Sb > ${sampleName}.out.bam
+    /opt/bwa.kit/bwa mem -K 100000000 -R ${read_group_header} -Y ${reference_fa} ${fq_file} | /opt/samblaster-v.0.1.24/samblaster --addMateTags | /opt/bwa.kit/samtools view -Sb > ${sampleName}_aligned.out.bam
   }
 
   output {
-    File aligned_bam = "${sampleName}.out.bam"
+    File aligned_bam = "${sampleName}_aligned.out.bam"
   }
 
   runtime {
@@ -133,31 +152,37 @@ task perform_alignment {
 }
 
 task merge_bam_files {
-  File samtools_path
   File BAM1
   File BAM2
   String sampleName
 
   command {
-  ${samtools_path} merge -c -p ${sampleName}_merged.bam ${BAM1} ${BAM2}
+  samtools merge -c -p ${sampleName}_merged.bam ${BAM1} ${BAM2}
   }
 
   output {
     File merged_bam = "${sampleName}_merged.bam"
   }
+
+  runtime {
+    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
+  }
 }
 
 task sort_bam_file {
-  File samtools_path
   File inputBAM
   String sampleName
 
   command {
-    ${samtools_path} sort ${inputBAM} -T tmp.srt -O bam -o ${sampleName}_sorted.bam
+    samtools sort ${inputBAM} -T tmp.srt -O bam -o ${sampleName}_sorted.bam
   }
 
   output {
     File outputBAM = "${sampleName}_sorted.bam"
+  }
+
+  runtime {
+    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
   }
 }
 
@@ -171,6 +196,18 @@ task mark_duplicates {
 
   output {
     File deduped_bam_output = "${sampleName}.deduped.bam"
+  }
+}
+
+task bam_to_sam {
+  File input_bamfile
+
+  command {
+  samtools view -h -o out.sam ${input_bamfile}
+  }
+
+  runtime {
+    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
   }
 }
 
