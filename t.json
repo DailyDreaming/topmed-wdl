@@ -1,6 +1,5 @@
 {
-  "TOPMed.sort_cram_file.inputCRAM": "/home/lifeisaboutfishtacos/Desktop/inputs-topmed/sample.cram",
-  "TOPMed.samtools": "/home/lifeisaboutfishtacos/Desktop/toil-workflows/tools/samtools-1.6/samtools",
+  "TOPMed.sort_cram_file.inputCRAM": "/home/lifeisaboutfishtacos/Downloads/NWD812009.recab.cram",
   "TOPMed.sample": "SampleX",
   "TOPMed.human_ref_fasta": "/home/lifeisaboutfishtacos/Desktop/GRCh38_full_analysis_set_plus_decoy_hla.fa",
   "TOPMed.sample_bam_pair_name1": "SampleX_1",
