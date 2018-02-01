@@ -7,7 +7,6 @@
 ## authorized to run all programs before running this script. Please see the docker
 ## page at https://hub.docker.com/r/broadinstitute/genomes-in-the-cloud/ for detailed
 ## licensing information pertaining to the included programs.
-
 workflow TOPMed {
   String sample
   String sample_bam_pair_name1
@@ -74,7 +73,27 @@ workflow TOPMed {
   call recalibrate_quality_scores {
   input:
       ref_fasta=human_ref_fasta,
+      ref_index=human_ref_index,
+      ref_dict=human_ref_dict,
       deduped_marked_bam=mark_duplicates.deduped_bam_output
+  }
+
+  call bin_quality_scores {
+  input:
+      ref_fasta=human_ref_fasta,
+      ref_index=human_ref_index,
+      ref_dict=human_ref_dict,
+      input_bam_to_bin=recalibrate_quality_scores.binned_output_bam,
+      binned_out_name=sample
+  }
+
+  call convert_to_cram {
+  input:
+      ref_fasta=human_ref_fasta,
+      ref_index=human_ref_index,
+      ref_dict=human_ref_dict,
+      input_end_bam=bin_quality_scores.binned_output_bam
+      output_cram_name=sample
   }
 }
 
@@ -238,10 +257,57 @@ task recalibrate_quality_scores {
   }
 
   output {
-    File x = "${recalibration_report_name}"
+    File recal_bam_output = "${recalibration_report_name}.recal.bam"
   }
 
   runtime {
     docker: 'quay.io/ucsc_cgl/gatk:3.7--e931e1ca12f6d930b755e5ac9c0c4ca266370b7b'
+  }
+}
+
+task bin_quality_scores {
+  File ref_fasta
+  File ref_index
+  File ref_dict
+  File input_bam_to_bin
+  String binned_out_name
+  command {
+  java -jar /opt/gatk/gatk.jar -T PrintReads -R ${ref_fasta} \
+                   -I ${input_bam_to_bin} \
+                   -o ${} \
+                   -BQSR /data/bqsr_report_name \
+                   -SQQ 10 -SQQ 20 -SQQ 30 \
+                   --globalQScorePrior -1.0 \
+                   --preserve_qscores_less_than 6 \
+                   --disable_indel_quals \
+                   --useOriginalQualities \
+                   -rf BadCigar
+  }
+  output {
+    File binned_output_bam = "${binned_out_name}.binned.bam"
+  }
+
+  runtime {
+    docker: 'quay.io/ucsc_cgl/gatk:3.7--e931e1ca12f6d930b755e5ac9c0c4ca266370b7b'
+  }
+}
+
+task convert_to_cram {
+  File ref_fasta
+  File ref_index
+  File ref_dict
+  File input_end_bam
+  String output_cram_name
+
+  command {
+    samtools view -C -T ${ref_fasta} -o ${output_cram_name} ${input_end_bam}
+  }
+
+  output {
+    File final_cram = "${output_cram_name}.final.cram"
+  }
+
+  runtime {
+    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
   }
 }
