@@ -212,7 +212,6 @@ task bam_to_sam {
 }
 
 task recalibrate_quality_scores {
-  File GATK
   File ref_fasta
   File ref_index
   File ref_dict
