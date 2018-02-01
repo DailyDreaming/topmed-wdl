@@ -16,6 +16,8 @@ workflow TOPMed {
   String sample_bam_pair_name1
   String sample_bam_pair_name2
   File human_ref_fasta
+  File human_ref_index
+  File human_ref_dict
 
   call sort_cram_file {
   input: 
