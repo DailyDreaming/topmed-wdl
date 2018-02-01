@@ -278,7 +278,7 @@ task bin_quality_scores {
   command {
   java -jar /opt/gatk/gatk.jar -T PrintReads -R ${ref_fasta} \
                    -I ${input_bam_to_bin} \
-                   -o ${} \
+                   -o ${binned_out_name}.binned.bam \
                    -BQSR /data/bqsr_report_name \
                    -SQQ 10 -SQQ 20 -SQQ 30 \
                    --globalQScorePrior -1.0 \
