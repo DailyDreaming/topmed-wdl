@@ -9,6 +9,5 @@
   "TOPMed.recalibrate_quality_scores.known_site_2": "/home/lifeisaboutfishtacos/Downloads/Homo_sapiens_assembly38.dbsnp138.vcf",
   "TOPMed.recalibrate_quality_scores.known_site_3": "/home/lifeisaboutfishtacos/Downloads/Homo_sapiens_assembly38.known_indels.vcf.gz",
   "TOPMed.recalibrate_quality_scores.ref_index": "/home/lifeisaboutfishtacos/Desktop/GRCh38_full_analysis_set_plus_decoy_hla.fa.fai",
-  "TOPMed.recalibrate_quality_scores.ref_dict": "/home/lifeisaboutfishtacos/Desktop/GRCh38_full_analysis_set_plus_decoy_hla.dict",
-  "TOPMed.recalibrate_quality_scores.GATK": "/home/lifeisaboutfishtacos/Desktop/toil-workflows/tools/gatk/gatk"
+  "TOPMed.recalibrate_quality_scores.ref_dict": "/home/lifeisaboutfishtacos/Desktop/GRCh38_full_analysis_set_plus_decoy_hla.dict"
 }
