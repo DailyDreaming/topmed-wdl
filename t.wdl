@@ -216,11 +216,15 @@ task mark_duplicates {
   String sampleName
   
   command {
-    java -jar /home/lifeisaboutfishtacos/Desktop/toil-workflows/tools/picard.jar MarkDuplicates I=${duped_bam_input} O=${sampleName}.deduped.bam M=deduplicated_metrics.txt
+    MarkDuplicates I=${duped_bam_input} O=${sampleName}.deduped.bam M=deduplicated_metrics.txt
   }
 
   output {
     File deduped_bam_output = "${sampleName}.deduped.bam"
+  }
+
+  runtime {
+    docker: 'quay.io/ucsc_cgl/picardtools:latest'
   }
 }
 
