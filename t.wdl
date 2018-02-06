@@ -16,23 +16,23 @@ workflow TOPMed {
   String sample_bam_pair_name1
   String sample_bam_pair_name2
   File human_ref_fasta
-  File human_ref_index
-  File human_ref_dict
+  File initial_bam_sample
 
-  call sort_cram_file {
+  call init_sort_bam_file {
   input: 
-      sampleName=sample
+      sampleName=sample,
+      inputBAM=initial_bam_sample
   }
 
   call get_header {
   input: 
-      sorted_bam=sort_cram_file.outputBAM,
+      sorted_bam=init_sort_bam_file.outputBAM,
       sampleName=sample
   }
 
   call get_fastq {
   input: 
-      sorted_bam=sort_cram_file.outputBAM,
+      sorted_bam=init_sort_bam_file.outputBAM,
       sampleName=sample
   }
 
@@ -103,12 +103,12 @@ workflow TOPMed {
   }
 }
 
-task sort_cram_file {
-  File inputCRAM
+task init_sort_bam_file {
+  File inputBAM
   String sampleName
 
   command {
-    samtools sort ${inputCRAM} -T tmp.srt -O bam -o ${sampleName}_sorted.bam
+    samtools sort ${inputBAM} -T tmp.srt -O bam -o ${sampleName}_sorted.bam
   }
 
   output {
@@ -216,15 +216,11 @@ task mark_duplicates {
   String sampleName
   
   command {
-    MarkDuplicates I=${duped_bam_input} O=${sampleName}.deduped.bam M=deduplicated_metrics.txt
+    java -jar /home/lifeisaboutfishtacos/Desktop/toil-workflows/tools/picard.jar MarkDuplicates I=${duped_bam_input} O=${sampleName}.deduped.bam M=deduplicated_metrics.txt
   }
 
   output {
     File deduped_bam_output = "${sampleName}.deduped.bam"
-  }
-
-  runtime {
-    docker: 'quay.io/ucsc_cgl/picardtools:latest'
   }
 }
 
