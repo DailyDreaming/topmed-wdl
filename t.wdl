@@ -1,7 +1,5 @@
 ## Copyright UCSC, 2018
 ##
-## Expects a single cram file consisting of paired end reads.
-##
 ## LICENSING :
 ## This script is released under the WDL source code license (BSD-3) (see LICENSE in
 ## https://github.com/broadinstitute/wdl). Note however that the programs it calls may
