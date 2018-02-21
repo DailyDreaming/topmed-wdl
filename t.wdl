@@ -75,7 +75,8 @@ workflow TOPMed {
 
   call bam_to_sam {
   input:
-      input_bamfile=align_1.aligned_bam
+      sampleName=sample,
+      input_bamfile=mark_duplicates.deduped_bam_output
   }
 
   call recalibrate_quality_scores {
@@ -83,7 +84,7 @@ workflow TOPMed {
       ref_fasta=human_ref_fasta,
       ref_index=human_ref_index,
       ref_dict=human_ref_dict,
-      deduped_marked_bam=mark_duplicates.deduped_bam_output
+      deduped_marked_bam=bam_to_sam.deduped_sam_output
   }
 
   call bin_quality_scores {
@@ -218,16 +219,21 @@ task mark_duplicates {
   String sampleName
   
   command {
-    java -jar /home/lifeisaboutfishtacos/Desktop/toil-workflows/tools/picard.jar MarkDuplicates I=${duped_bam_input} O=${sampleName}.deduped.bam M=deduplicated_metrics.txt
+    java -jar /opt/picard-tools/picard.jar MarkDuplicates I=${duped_bam_input} O=${sampleName}.deduped.bam M=deduplicated_metrics.txt
   }
 
   output {
     File deduped_bam_output = "${sampleName}.deduped.bam"
   }
+
+  runtime {
+    docker: 'quay.io/ucsc_cgl/picardtools:2.9.0--4d726c4a1386d4252a0fc72d49b1d3f5b50b1e23'
+  }
 }
 
 task bam_to_sam {
   File input_bamfile
+  String sampleName
 
   command {
   samtools view -h -o out.sam ${input_bamfile}
@@ -235,6 +241,10 @@ task bam_to_sam {
 
   runtime {
     docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
+  }
+
+  output {
+    File deduped_sam_output = "${sampleName}.deduped.sam"
   }
 }
 
