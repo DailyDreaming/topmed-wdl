@@ -15,96 +15,95 @@ workflow TOPMed {
   String sample_bam_pair_name2
   File human_ref_fasta
   File human_ref_index
+  File human_ref_index2
   File human_ref_dict
   File initial_bam_sample
+  File bwa_sa
+  File bwa_pac
+  File bwa_bwt
+  File bwa_ann
+  File bwa_amb
+  File index_folder
 
-  call init_sort_bam_file {
+  call o0_init_sort_bam_file {
   input: 
       sampleName=sample,
       inputBAM=initial_bam_sample
   }
 
-  call get_header {
+  call o1_get_header {
   input: 
-      sorted_bam=init_sort_bam_file.outputBAM,
+      sorted_bam=o0_init_sort_bam_file.outputBAM,
       sampleName=sample
   }
 
-  call get_fastq {
+  call o1_get_fastq {
   input: 
-      sorted_bam=init_sort_bam_file.outputBAM,
+      sorted_bam=o0_init_sort_bam_file.outputBAM,
       sampleName=sample
   }
 
-  call perform_alignment as align_1 {
+  call o2_perform_alignment {
   input: 
+      sorted_BAM1=o1_get_fastq.BAMfastq_1,
+      sorted_BAM2=o1_get_fastq.BAMfastq_2,
       sampleName=sample_bam_pair_name1,
-      read_group_header=get_header.BAMheader,
+      read_group_header=o1_get_header.BAMheader,
+      align_sa=bwa_sa,
+      align_pac=bwa_pac,
+      align_bwt=bwa_bwt,
+      align_ann=bwa_ann,
+      align_amb=bwa_amb,
       reference_fa=human_ref_fasta,
-      fq_file=get_fastq.BAMfastq_1
+      reference_index=human_ref_index,
+      reference_index2=human_ref_index2,
+      reference_dict=human_ref_dict,
+      index_path=index_folder
   }
 
-  call perform_alignment as align_2 {
-  input: 
-      sampleName=sample_bam_pair_name2,
-      read_group_header=get_header.BAMheader,
-      reference_fa=human_ref_fasta,
-      fq_file=get_fastq.BAMfastq_2
-  }
-
-  call merge_bam_files {
+  call o3_mark_duplicates {
   input: 
       sampleName=sample,
-      BAM1=align_1.aligned_bam,
-      BAM2=align_2.aligned_bam
+      duped_bam_input=o2_perform_alignment.aligned_bam
   }
 
-  call sort_bam_file {
-  input: 
-      inputBAM=merge_bam_files.merged_bam,
-      sampleName=sample
-  }
-
-  call mark_duplicates {
-  input: 
-      sampleName=sample,
-      duped_bam_input=sort_bam_file.outputBAM
-  }
-
-  call bam_to_sam {
+  call o4_sort_bam {
   input:
       sampleName=sample,
-      input_bamfile=mark_duplicates.deduped_bam_output
+      input_bamfile=o3_mark_duplicates.deduped_bam_output
   }
 
-  call recalibrate_quality_scores {
+  call o5_recalibrate_quality_scores {
   input:
       ref_fasta=human_ref_fasta,
       ref_index=human_ref_index,
+      ref_index2=human_ref_index2,
       ref_dict=human_ref_dict,
-      deduped_marked_bam=bam_to_sam.deduped_sam_output
+      deduped_marked_bam=o4_sort_bam.indexsorted_bam_output
   }
 
-  call bin_quality_scores {
+  call o6_bin_quality_scores {
   input:
       ref_fasta=human_ref_fasta,
       ref_index=human_ref_index,
+      ref_index2=human_ref_index2,
       ref_dict=human_ref_dict,
-      input_bam_to_bin=recalibrate_quality_scores.recal_bam_output,
+      input_bam_to_bin=o5_recalibrate_quality_scores.recal_bam_output,
       binned_out_name=sample
   }
 
-  call convert_to_cram {
+  call o7_convert_to_cram {
   input:
       ref_fasta=human_ref_fasta,
       ref_index=human_ref_index,
+      ref_index2=human_ref_index2,
       ref_dict=human_ref_dict,
-      input_end_bam=bin_quality_scores.binned_output_bam,
+      input_end_bam=o6_bin_quality_scores.binned_output_bam,
       output_cram_name=sample
   }
 }
 
-task init_sort_bam_file {
+task o0_init_sort_bam_file {
   File inputBAM
   String sampleName
 
@@ -117,11 +116,11 @@ task init_sort_bam_file {
   }
 
   runtime {
-    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
+    docker: 'quay.io/ucsc_cgl/samtools:1.3--256539928ea162949d8a65ca5c79a72ef557ce7c'
   }
 }
 
-task get_header {
+task o1_get_header {
   File sorted_bam
   String sampleName
 
@@ -134,11 +133,11 @@ task get_header {
   }
 
   runtime {
-    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
+    docker: 'quay.io/ucsc_cgl/samtools:1.3--256539928ea162949d8a65ca5c79a72ef557ce7c'
   }
 }
 
-task get_fastq {
+task o1_get_fastq {
   File sorted_bam
   String sampleName
 
@@ -153,66 +152,41 @@ task get_fastq {
   }
 
   runtime {
-    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
+    docker: 'quay.io/ucsc_cgl/samtools:1.3--256539928ea162949d8a65ca5c79a72ef557ce7c'
   }
 }
 
-task perform_alignment {
+task o2_perform_alignment {
+  File sorted_BAM1
+  File sorted_BAM2
   File read_group_header
   String header = read_string(read_group_header)
   File reference_fa
-  File fq_file
+  File reference_index
+  File reference_index2
+  File reference_dict
   String sampleName
+  File align_sa
+  File align_pac
+  File align_bwt
+  File align_ann
+  File align_amb
+  File seqtk_path
+  File bwa_path
+  File samblaster_path
+  File samtools_path
+  File index_path
 
   command {
-    /opt/bwa.kit/bwa mem -K 100000000 -R ${read_group_header} -Y ${reference_fa} ${fq_file} | /opt/samblaster-v.0.1.24/samblaster --addMateTags | /opt/bwa.kit/samtools view -Sb > ${sampleName}_aligned.out.bam
+    ${seqtk_path} mergepe ${sorted_BAM1} ${sorted_BAM2} | ${bwa_path} mem -p -R '@RG\tID:B\tSM:NA12878\tLB:Solexa-NA12878\tPL:illumina\tPU:H06HDADXX130110.1.ATCACGAT\n@HD\tVN:1.5\tSO:coordinate' ${reference_fa} - 2> outx.log.bwamem | ${samblaster_path} --addMateTags 2> outx.log.dedup | ${samtools_path} sort - ${sampleName}_aligned.out
   }
 
   output {
     File aligned_bam = "${sampleName}_aligned.out.bam"
   }
-
-  runtime {
-    docker: 'quay.io/ucsc_cgl/bwakit:0.7.15--ed1aeaaebf4d88ba51042da83f02ef8373a822b9'
-  }
 }
 
-task merge_bam_files {
-  File BAM1
-  File BAM2
-  String sampleName
-
-  command {
-  samtools merge -c -p ${sampleName}_merged.bam ${BAM1} ${BAM2}
-  }
-
-  output {
-    File merged_bam = "${sampleName}_merged.bam"
-  }
-
-  runtime {
-    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
-  }
-}
-
-task sort_bam_file {
-  File inputBAM
-  String sampleName
-
-  command {
-    samtools sort ${inputBAM} -T tmp.srt -O bam -o ${sampleName}_sorted.bam
-  }
-
-  output {
-    File outputBAM = "${sampleName}_sorted.bam"
-  }
-
-  runtime {
-    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
-  }
-}
-
-task mark_duplicates {
+task o3_mark_duplicates {
   File duped_bam_input
   String sampleName
   
@@ -229,32 +203,36 @@ task mark_duplicates {
   }
 }
 
-task bam_to_sam {
+task o4_sort_bam {
   File input_bamfile
   String sampleName
 
   command {
-  samtools view -h -o ${sampleName}.deduped.sam ${input_bamfile}
+    java -jar /opt/picard-tools/picard.jar SortSam I=${input_bamfile} O=${sampleName}.indexsorted.sam SORT_ORDER=coordinate
   }
 
   runtime {
-    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
+    docker: 'quay.io/ucsc_cgl/picardtools:2.9.0--4d726c4a1386d4252a0fc72d49b1d3f5b50b1e23'
   }
 
   output {
-    File deduped_sam_output = "${sampleName}.deduped.sam"
+    File indexsorted_bam_output = "${sampleName}.indexsorted.sam"
   }
 }
 
-task recalibrate_quality_scores {
+task o5_recalibrate_quality_scores {
   File ref_fasta
   File ref_index
+  File ref_index2
   File ref_dict
   File deduped_marked_bam
   String recalibration_report_name
   File known_site_1
   File known_site_2
   File known_site_3
+  File known_site_1_index
+  File known_site_2_index
+  File known_site_3_index
 
   command {
     java -jar /opt/gatk/gatk.jar -T BaseRecalibrator \
@@ -281,9 +259,10 @@ task recalibrate_quality_scores {
   }
 }
 
-task bin_quality_scores {
+task o6_bin_quality_scores {
   File ref_fasta
   File ref_index
+  File ref_index2
   File ref_dict
   File input_bam_to_bin
   String binned_out_name
@@ -308,9 +287,10 @@ task bin_quality_scores {
   }
 }
 
-task convert_to_cram {
+task o7_convert_to_cram {
   File ref_fasta
   File ref_index
+  File ref_index2
   File ref_dict
   File input_end_bam
   String output_cram_name
@@ -324,6 +304,6 @@ task convert_to_cram {
   }
 
   runtime {
-    docker: 'quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0'
+    docker: 'quay.io/ucsc_cgl/samtools:1.3--256539928ea162949d8a65ca5c79a72ef557ce7c'
   }
 }
