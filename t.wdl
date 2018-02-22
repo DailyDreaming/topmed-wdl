@@ -234,7 +234,7 @@ task bam_to_sam {
   String sampleName
 
   command {
-  samtools view -h -o out.sam ${input_bamfile}
+  samtools view -h -o ${sampleName}.deduped.sam ${input_bamfile}
   }
 
   runtime {
