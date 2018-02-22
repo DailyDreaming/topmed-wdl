@@ -208,7 +208,7 @@ task o4_sort_bam {
   String sampleName
 
   command {
-    java -jar /opt/picard-tools/picard.jar SortSam I=${input_bamfile} O=${sampleName}.indexsorted.sam SORT_ORDER=coordinate
+    java -jar /opt/picard-tools/picard.jar SortSam I=${input_bamfile} O=${sampleName}.indexsorted.bam SORT_ORDER=coordinate
   }
 
   runtime {
@@ -216,7 +216,7 @@ task o4_sort_bam {
   }
 
   output {
-    File indexsorted_bam_output = "${sampleName}.indexsorted.sam"
+    File indexsorted_bam_output = "${sampleName}.indexsorted.bam"
   }
 }
 
